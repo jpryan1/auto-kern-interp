@@ -1,6 +1,4 @@
 
-
-
 function update_active_dofs(tree)
   for level in length(tree.levels):-1:1
     update_active_dofs(tree, level)
@@ -8,7 +6,7 @@ function update_active_dofs(tree)
 end
 
 
-function update_active_dofs(tree, level::Int64)
+function update_active_dofs(tree, level::Int32)
   current_level = tree.levels[level]
   for node in current_level.nodes
     if node.data.compressed
@@ -158,6 +156,7 @@ function get_id_mat(kernel, tree, node)
     return id_mat
   end
 
+
   node_verts = vertices(node)
   side_length = norm(node_verts[1,1] - node_verts[1,2])
   mid = ( node_verts[2,2] - node_verts[1,1] ) / 2. + node_verts[1,1]
@@ -167,25 +166,26 @@ function get_id_mat(kernel, tree, node)
       push!(outside_box_points, point)
     end
   end
-  pxy_points = [mid + 1.5*side_length*[cos(ang), sin(ang)] 
+  pxy_points = [mid + 1.5*side_length*[cos(ang), sin(ang)]
                 for ang in (2*pi/128.):(2*pi/128.):(2*pi)]
 
   idx_a = length(outside_box_points)
   idx_b = 2*length(outside_box_points)
   idx_c = 2*length(outside_box_points) + length(pxy_points)
   idx_d = 2*length(outside_box_points) + 2*length(pxy_points)
-  
-  id_mat = Matrix{Float64}(undef, idx_d, length(active_box_points))
+
+  # id_mat = Matrix{Float64}(0., idx_d, length(active_box_points))
+  id_mat = zeros( idx_d, length(active_box_points))
   
   id_mat[1:idx_a, :] = 
     kernel.(outside_box_points, permutedims(active_box_points))
-  id_mat[(idx_a+1):idx_b, :] = 
-    transpose(kernel.(active_box_points, permutedims(outside_box_points))) 
+  # id_mat[(idx_a+1):idx_b, :] = 
+  #   transpose(kernel.(active_box_points, permutedims(outside_box_points))) 
 
-  id_mat[(idx_b+1):idx_c, :] = 
-    kernel.(pxy_points, permutedims(active_box_points))
-  id_mat[(idx_c+1):idx_d, :] = 
-    transpose(kernel.(active_box_points, permutedims(pxy_points))) 
+  # id_mat[(idx_b+1):idx_c, :] = 
+  #   kernel.(pxy_points, permutedims(active_box_points))
+  # id_mat[(idx_c+1):idx_d, :] = 
+  #   transpose(kernel.(active_box_points, permutedims(pxy_points))) 
   return id_mat
 
 end
@@ -193,17 +193,40 @@ end
 
 function id_compress(kernel, tree, node)
   pxy = get_id_mat(kernel, tree, node)
-  node.data.T, P = id(pxy);
+  T, P = id(pxy);
   if P == nothing
     return 0
   end
-
+  node.data.T = T
   numskel = size(node.data.T, 1)
+
+  outside_box_points = []
+  for level_node in tree.levels[node.data.level].nodes
+    if level_node == node
+      continue
+    end
+    append!(outside_box_points, [[tree.points[2*idx-1],tree.points[2*idx]] 
+            for idx in level_node.data.dof_lists.active_box])
+  end
+  # active_box_points = [[tree.points[2*idx-1],tree.points[2*idx]] 
+  #                       for idx in node.data.dof_lists.active_box]
+ 
+
   node.data.dof_lists.perm = P
   node.data.dof_lists.skel = node.data.dof_lists.active_box[P[1:numskel]]
   node.data.dof_lists.redundant = node.data.dof_lists.active_box[P[(numskel+1):end]]
   node.data.dof_lists.skelnear = copy(node.data.dof_lists.skel)
        
+
+  redund_points =  [[tree.points[2*idx-1],tree.points[2*idx]] 
+                        for idx in node.data.dof_lists.redundant]
+  skel_points =  [[tree.points[2*idx-1],tree.points[2*idx]] 
+                        for idx in node.data.dof_lists.skel]
+ 
+  KfsT = kernel.(outside_box_points, permutedims(skel_points)) * T
+  err = norm(KfsT - kernel.(outside_box_points, permutedims(redund_points))) / norm(kernel.(outside_box_points, permutedims(redund_points)))
+  println("ID err ", err) 
+     
   return numskel
 end
 

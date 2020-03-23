@@ -1,4 +1,6 @@
 
+import RegionTrees.Cell
+
 mutable struct DofLists
   original_box::Array{Int64}
   active_box::Array{Int64}
@@ -7,8 +9,8 @@ mutable struct DofLists
   near::Array{Int64}
   redundant::Array{Int64}
   perm::Array{Int64}
-  DofLists() = new([],[],[],[],[], [], [])
 end
+DofLists() = DofLists([],[],[],[],[], [], [])
 
 
 mutable struct NodeData
@@ -21,8 +23,8 @@ mutable struct NodeData
   dof_lists::DofLists
   compressed::Bool
   neighbors::Array{Cell{NodeData, 2, Float64, 4}}
-  NodeData() = new(Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0), 1, DofLists(), false, [])
 end
+NodeData() = NodeData(Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0),Matrix{Float64}(undef, 0, 0), 1, DofLists(), false, [])
 
 
 mutable struct QuadTreeLevel

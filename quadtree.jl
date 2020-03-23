@@ -1,6 +1,10 @@
 using RegionTrees
 using StaticArrays: SVector
-# using Plots
+using Plots
+
+import RegionTrees.Cell
+
+
 include("structs.jl")
 
 function node_subdivide(qt, node)
@@ -192,12 +196,11 @@ function initialize_tree(points)
   end
   compute_neighbors(qt)
 
-  # plt = plot(xlim=(point_min, point_max), ylim=(point_min, point_max), legend=nothing)
-  # for leaf in allleaves(root)
-  #     v = hcat(collect(vertices(leaf.boundary))...)
-  #     plot!(plt, v[1,[1,2,4,3,1]], v[2,[1,2,4,3,1]])
-  # end
-  # gui()
+  plt = plot(xlim=(point_min, point_max), ylim=(point_min, point_max), legend=nothing)
+  for leaf in allleaves(root)
+      v = hcat(collect(vertices(leaf.boundary))...)
+      plot!(plt, v[1,[1,2,4,3,1]], v[2,[1,2,4,3,1]])
+  end
+  gui()
   return qt
 end
-

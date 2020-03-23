@@ -1,4 +1,4 @@
-
+module auto_kern_interp
 
 using LinearAlgebra
 
@@ -6,35 +6,38 @@ include("quadtree.jl");
 include("skel-interp.jl");
 
 function kernel(x,y)
-  if(norm(x-y)<1e-6)
+  if(x==y)
     return 2
   end
-  return exp(norm(x-y)^2)
+  return 1.0/norm(x-y)^2
 end
 
 
-function main()
+function main() 
 
-  x_points = [[x,y] for x in 0.1:0.01:0.9, y in 0.1:0.01:0.9]
-  points_vec = zeros(16000)
-  for ang in 1:8000
-    points_vec[2*ang-1] = cos((ang)*pi/4000.)
-    points_vec[2*ang] = sin((ang)*pi/4000.)
+  num_points = 2^(8)
+  points_vec = zeros(num_points*2)
+  for idx in 1:num_points
+    ang = 2.0*idx*pi/num_points
+    
+    points_vec[2*idx-1] = 0.375*cos(ang)*(sin(ang)+4)
+    points_vec[2*idx] = 0.375*sin(ang)*(sin(ang)+4)
   end
 
   quadtree = initialize_tree(points_vec)
   skel_interp(kernel, quadtree)
 
-  f = ones((8000, 1))
-  mu = ones((8000, 1))
+  f = randn((num_points, 1))
+  mu = randn((num_points, 1))
   solve(quadtree, mu, f)
-  # mu = quadtree.allskel_mat \ f
-  points_arr = [[points_vec[2*i-1], points_vec[2*i]] for i in 1:8000]
+ 
+  points_arr = [[points_vec[2*i-1], points_vec[2*i]] for i in 1:num_points]
   forward_mat = kernel.(points_arr, permutedims(points_arr)) 
 
   forward = forward_mat * mu
-  println("Err ", norm(forward - f))
-  println("Done.")
+  println("Err ", norm(forward - f)/norm(f))
 end
 
-main()
+end
+
+auto_kern_interp.main()
